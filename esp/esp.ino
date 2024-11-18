@@ -6,7 +6,10 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHTesp dht;
 int dhtPin = 16;
 int relay_pin = 13;
-int triggerPin1 = 33 int echoPin1 = 32 int triggerPin2 = 0 int echoPin2 = 4
+int triggerPin1 = 33;
+int echoPin1 = 32;
+int triggerPin2 = 0;
+int echoPin2 = 4;
 
     int cm1 = 0;
 int cm2 = 0;
