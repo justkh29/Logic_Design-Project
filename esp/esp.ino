@@ -6,31 +6,29 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHTesp dht;
 int dhtPin = 16;
 int relay_pin = 13;
-int triggerPin1 = 33;
-int echoPin1 = 32;
-int triggerPin2 = 0;
-int echoPin2 = 4;
 
-    int cm1 = 0;
-int cm2 = 0;
-int duration1 = 50;
-int duration2 = 30;
-int count1 = 0;
-int count2 = 0;
-int status1 = 0;
-int status2 = 0;
+int cm1 = 0, cm2 = 0;
+int status1 = 0, status2 = 0;
+int duration1 = 5, duration2 = 4; 
+long lastTime1 = 0, lastTime2 = 0;
+
+
 
 unsigned long currentTime = millis();
 
 void setup()
 {
   Serial.begin(9600);
-  pinMode(5, OUTPUT);
-  pinMode(18, OUTPUT);
-  pinMode(triggerPin1, OUTPUT);
-  pinMode(echoPin1, INPUT);
-  pinMode(triggerPin2, OUTPUT);
-  pinMode(echoPin2, INPUT);
+
+
+  pinMode(33, INPUT); // Echo 1
+  pinMode(32, OUTPUT); // Trigger 1
+  pinMode(5, OUTPUT); // LED 1
+
+  pinMode(4, INPUT); // Echo 2
+  pinMode(0, OUTPUT); // Trigger 2
+  pinMode(18, OUTPUT); // LED 2
+
   pinMode(relay_pin, OUTPUT);
   dht.setup(dhtPin, DHTesp::DHT11);
   lcd.init();
@@ -40,8 +38,11 @@ void setup()
 
 void loop()
 {
-  ledControl(cm1, 5, triggerPin1, echoPin1, count1, duration1, status1, 5);
-  ledControl(cm2, 20, triggerPin2, echoPin2, count2, duration2, status2, 18);
+   ledControl(cm1, 5, 33, 32, duration1, status1, 5, lastTime1);
+  ledControl(cm2, 5, 4, 0, duration2, status2, 18, lastTime2);
+
+  // ledControl(cm1, 5, triggerPin1, echoPin1, count1, duration1, status1, 5);
+  // ledControl(cm2, 5, triggerPin2, echoPin2, count2, duration2, status2, 18);
   if (millis() - currentTime > 1000)
   {
     NHIETDO();
@@ -51,6 +52,18 @@ void loop()
   {
     handleRelay();
   }
+}
+
+long readDistance(int triggerPin, int echoPin)
+{
+  pinMode(triggerPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  digitalWrite(triggerPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(triggerPin, LOW);
+  return pulseIn(echoPin, HIGH);
 }
 
 void handleRelay()
@@ -87,47 +100,36 @@ String dataForm(float value, int leng, int decimal)
   return str;
 }
 
-long readDistance(int triggerPin, int echoPin)
-{
-  pinMode(triggerPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  digitalWrite(triggerPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(triggerPin, LOW);
-  return pulseIn(echoPin, HIGH);
-}
 
-void ledControl(int &cm, int range, int triggerPin, int echoPin, int &count, int &duration, int &status, int output)
+void ledControl(int &cm, int range, int triggerPin, int echoPin, int duration, int &status, int output, long &lastTime)
 {
+  unsigned long now = millis();
+
   cm = 0.0173 * readDistance(triggerPin, echoPin);
-  Serial.print(cm);
-  Serial.println("cm");
-  if (cm <= range)
-  {
-    status = 1;
-  }
+
   switch (status)
   {
-  case 0:
-    break;
-  case 1:
-    digitalWrite(output, HIGH);
-    if (duration > 0)
+  case 0: // Waiting for object in range
+    if (cm <= range)
     {
-      count++;
-      if (count >= duration)
-      {
-        status = 2;
-        count = 0;
-        Serial.print("Done. Change status to ");
-        Serial.println(status);
-      }
+      digitalWrite(output, HIGH); 
+      lastTime = now;             
+      status = 1;              
     }
     break;
+
+  case 1: // Object detected
+    Serial.print(now - lastTime);
+    Serial.print("\n");
+    if (now - lastTime >= duration * 1000) 
+    {
+      status = 2;
+    }
+    break;
+
   case 2:
-    digitalWrite(output, LOW);
+    digitalWrite(output, LOW); 
+    status = 0;               
     break;
   }
 }
