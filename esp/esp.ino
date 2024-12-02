@@ -126,17 +126,23 @@ void ledControl(int cm, int range, int duration, int &status, int output, long &
 {
   unsigned long now = millis();
 
-  switch (status) {
+  switch (status) 
+  {
     case 0: // Waiting for object in range
-        if (cm <= range) {
+        if (cm <= range) 
+        {
             digitalWrite(output, HIGH); 
-            lastTime = now;             
-            status = 1;              
+            if (duration > 0)
+            {
+              lastTime = now;             
+              status = 1;  
+            }
         }
         break;
 
     case 1: // Object detected
-        if (now - lastTime >= duration * 1000) {
+        if (now - lastTime >= duration * 1000) 
+        {
             status = 2;
         }
         break;
