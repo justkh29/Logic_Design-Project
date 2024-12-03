@@ -9,7 +9,7 @@ int relay_pin = 13;
 
 int cm1 = 0, cm2 = 0, cm3 = 0;
 int status1 = 0, status2 = 0, status3 = 0;
-int duration1 = 2, duration2 = 2, duration3 = 2;
+int duration1 = 3, duration2 = 2, duration3 = 2;
 long lastTime1 = 0, lastTime2 = 0, lastTime3 = 0;
 
 
@@ -25,8 +25,8 @@ void setup()
   pinMode(16, OUTPUT); // Trigger 1
   pinMode(5, OUTPUT); // LED 1
 
-  pinMode(19, INPUT); // Echo 2
-  pinMode(18, OUTPUT); // Trigger 2
+  pinMode(2, INPUT); // Echo 2
+  pinMode(0, OUTPUT); // Trigger 2
   pinMode(4, OUTPUT); // LED 2
 
   pinMode(26, INPUT); // Echo 3
@@ -60,18 +60,18 @@ void loop()
 
       // Update sensor distances
       cm1 = 0.0173 * readDistance(16, 17);
-      cm2 = 0.0173 * readDistance(18, 19);
+      cm2 = 0.0173 * readDistance(0, 2);
       cm3 = 0.0173 * readDistance(25, 26);
 
 
   }
       // Print results
-      Serial.print("Sensor 1 Distance: ");
-      Serial.println(cm1);
+      Serial.print("Sensor 2 Distance: ");
+      Serial.println(cm2);
   // Update LED statuses based on latest readings
-  ledControl(cm1, 20, duration1, status1, 5, lastTime1);
-  ledControl(cm2, 20, duration2, status2, 4, lastTime2);
-  ledControl(cm3, 20, duration3, status3, 33, lastTime3);
+  ledControl(cm1, 5, duration1, status1, 5, lastTime1);
+  ledControl(cm2, 5, duration2, status2, 4, lastTime2);
+  ledControl(cm3, 5, duration3, status3, 33, lastTime3);
 
 }
 
@@ -84,7 +84,7 @@ long readDistance(int triggerPin, int echoPin)
   digitalWrite(triggerPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(triggerPin, LOW);
-  return pulseIn(echoPin, HIGH);
+  return pulseIn(echoPin, HIGH, 100000);
 }
 
 void handleRelay()
@@ -125,31 +125,37 @@ String dataForm(float value, int leng, int decimal)
 void ledControl(int cm, int range, int duration, int &status, int output, long &lastTime) 
 {
   unsigned long now = millis();
-
+  if (cm <= range)
+  {
+    status = 0;
+  }
   switch (status) 
   {
     case 0: // Waiting for object in range
-        if (cm <= range) 
-        {
-            digitalWrite(output, HIGH); 
-            if (duration > 0)
-            {
-              lastTime = now;             
-              status = 1;  
-            }
-        }
-        break;
+      digitalWrite(output, HIGH);
+      if (duration == 0)
+      {             
+        status = 1;  
+      }
+      else
+      {
+        lastTime = now;
+        status = 2;
+      }
+      break;
 
-    case 1: // Object detected
-        if (now - lastTime >= duration * 1000) 
-        {
-            status = 2;
-        }
-        break;
+    case 1: // Light on infitely
+      digitalWrite(output, HIGH);
+      break;
+    case 2: // Light on with duration
+      if (now - lastTime >= duration * 1000) 
+      {
+        status = 3;
+      }
+      break;
 
-    case 2:
-        digitalWrite(output, LOW); 
-        status = 0;               
-        break;
+    case 3:
+      digitalWrite(output, LOW);              
+      break;
   }
 }
