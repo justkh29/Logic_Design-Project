@@ -8,6 +8,15 @@ char password[4];
 char init_pass[4], new_pass[4];
 char key_pressed = 0;
 const byte row = 4, col = 4;
+
+unsigned long previousMillis = 0;
+const long interval = 20;
+int buzzer = 13;
+int pinA0 = A0; 
+int pinA1 = A1;  
+int pinA2 = A2;
+int flameA0; 
+
 char MatrixKey[row][col] = {
   {'1','2','3','A'},
   {'4','5','6','B'},
@@ -25,27 +34,51 @@ void setup() {
   Serial.begin(9600); // Kết nối UART
   lcd.begin(16, 2);
   lcd.backlight();
-  pinMode(13,OUTPUT);
-  digitalWrite(13,LOW);
+  pinMode(buzzer,OUTPUT);
+  digitalWrite(buzzer,LOW);
+  pinMode(pinA0, INPUT);
+  pinMode(pinA1, INPUT);
+  pinMode(pinA2, INPUT);
   displayLCD("  LAI 10 DO AN ", " Nha Thong Minh ", 3000);
   displayLCD("Nhap mat khau:", "", 0);
   setInitialPassword();
 }
 
 void loop() {
+   checkfire(pinA0, buzzer);
   key_pressed = keypad_key.getKey();
   if (key_pressed) {
     offTime = millis(); 
     handleKeyPress();
   }
-
   if (millis() - offTime > setTime) { 
     lcd.noBacklight();
   } else {
     lcd.backlight(); 
   }
-
   if (key_pressed == '#') changePassword();
+    unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    checkfire(pinA0, buzzer); 
+    checkfire(pinA1, buzzer);  
+    checkfire(pinA2, buzzer);
+  }
+}
+
+void checkfire(int pin, int buzzerPin) {
+  flameA0 = analogRead(pin);
+  
+  if (flameA0 < 100) {
+    digitalWrite(buzzer, HIGH); 
+  } else {
+    digitalWrite(buzzer, LOW);  
+  }
+
+  // Serial.print("Flame Sensor Value: ");
+  // Serial.println(flameA0);
 }
 
 void handleKeyPress() {
@@ -66,7 +99,7 @@ void handleKeyPress() {
       wrong_attempts++;
       if (wrong_attempts >= 3) {
         displayLCD("    Trom nha", "    bo a con", 2000);
-        digitalWrite(13,HIGH);
+        digitalWrite(buzzer,HIGH);
         Serial.write('1'); // Gửi tín hiệu tắt relay tới ESP32
       } else {
         displayLCD("Sai", "Thu lai", 2000);
